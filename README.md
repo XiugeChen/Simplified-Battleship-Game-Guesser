@@ -1,10 +1,8 @@
-# Treap Tester
+# Simplified Battleship Game Guesser
 
 ## Introduction
 
 * Project 1 for [COMP90048](https://handbook.unimelb.edu.au/2020/subjects/comp90048) (Declarative Programming) at the University of Melbourne, 2020 Sem1.
-
-* Simplitied Battleship Guesser
 
 * The game is played on a 4×8 grid, and involves two players:
 

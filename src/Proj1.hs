@@ -1,6 +1,6 @@
 {-| Author:    Xiuge Chen <xiugec@student.unimelb.edu.au>
 
-    Simplitied Battleship Guesser
+    Simplified Battleship Game Guesser
 
     The game is played on a 4×8 grid, and involves two players:
         1. A hider who will hide 3 battleships on the map, where each battleship takes one grid.
