@@ -18,7 +18,9 @@
 
     3. the number of guesses that were exactly two spaces away from a ship.
 
-* The program plays the role of searcher and tries to find the correct locations of all three battleships with the minimum number of guessing
+* The program plays the role of searcher and tries to find the correct locations of all three battleships with the minimum number of guessing.
+
+* The guessing process should be started by calling the "initialGuess" and many consecutive calls to "nextGuess" until all three battleships are identified. For each "nextGuess", the "feedback" function will give addition information described above, so that the next "nextGuess" could use it to update "GameState" and determine the next guess.
 
 * Result: 
 
