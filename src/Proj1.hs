@@ -9,9 +9,9 @@
       hider.
     
       Additional information will be provided after each guess:
-        1. the number of ships exactly located
-        2. the number of guesses that were exactly one space away from a ship
-        3. the number of guesses that were exactly two spaces away from a ship
+        1. number of ships exactly located
+        2. number of guesses that were exactly one space away from a ship
+        3. number of guesses that were exactly two spaces away from a ship
 
     - Assumptions: 
 
@@ -31,7 +31,7 @@ module Proj1 (Location, toLocation{-, feedback,
 data Row = One | Two | Three | Four 
     deriving (Eq)
 
-instance Show Row where show = showRow
+instance Show Row where show = rowToStr
 
 -- Possible column number of the map
 data Col = A | B | C | D | E | F | G | H 
@@ -41,7 +41,7 @@ data Col = A | B | C | D | E | F | G | H
 data Location = Location Col Row 
     deriving (Eq)
 
-instance Show Location where show = showLocation
+instance Show Location where show = locToStr
 
 -- ex
 -- data GameState = Null
@@ -50,18 +50,40 @@ instance Show Location where show = showLocation
 
 -- Takes a row variable and convert it to a showable String
 -- Implementation of Show type class
-showRow :: Row -> String
-showRow r
+rowToStr :: Row -> String
+rowToStr r
     | r == One   = "1"
     | r == Two   = "2"
     | r == Three = "3"
     | r == Four  = "4"
-    | otherwise  = error "Undefined show behaviour for row"
+    | otherwise  = error "Undefined instance of row"
+
+-- Convert Row value to int for calculating distance
+rowToInt :: Row -> Int
+rowToInt r
+    | r == One   = 1
+    | r == Two   = 2
+    | r == Three = 3
+    | r == Four  = 4
+    | otherwise  = error "Undefined instance of row"
+
+-- Convert Col value to int for calculating distance
+colToInt :: Col -> Int
+colToInt c
+    | c == A = 1
+    | c == B = 2
+    | c == C = 3
+    | c == D = 4
+    | c == E = 5
+    | c == F = 6
+    | c == G = 7
+    | c == H = 8
+    | otherwise = error "Undefined instance of column"
 
 -- Takes a location and convert it to a showable String
 -- Implementation of Show type class
-showLocation :: Location -> String
-showLocation (Location c r) = show c ++ show r
+locToStr :: Location -> String
+locToStr (Location col row) = show col ++ show row
 
 -- Convert a string to Row
 -- Input string must be of valid row format (length 1 from "1" to "4")
@@ -85,7 +107,7 @@ toCol c
     | c == "F"  = F
     | c == "G"  = G
     | c == "H"  = H
-    | otherwise = error "Undefined char representation of row"
+    | otherwise = error "Undefined char representation of column"
 
 -- Takes a String format location and convert it type Location
 -- Input must be a valid location (i.e. length two from A1 to H4)
@@ -95,13 +117,43 @@ toLocation s =
         then Just (Location (toCol(take 1 s)) (toRow(drop 1 s)))
     else Nothing
 
-{-
--- ex
--- feedback :: [Location] → [Location] → (Int,Int,Int)
+-- Element wise add two triple of numbers
+elemWiseAdd :: Num a => (a, a, a) -> (a, a, a) -> (a, a, a)
+elemWiseAdd (a1, b1, c1) (a2, b2, c2) = (a1 + a2, b1 + b2, c1 + c2)
 
+-- Calculate the difference of two columns
+colDiff :: Col -> Col -> Int
+colDiff c1 c2 = abs (colToInt c1 - colToInt c2)
+
+-- Calculate the difference of two rows
+rowDiff :: Row -> Row -> Int
+rowDiff r1 r2 = abs (rowToInt r1 - rowToInt r2)
+
+-- Get the minimum distance between one guess and all targets.
+minGusDist :: Location -> [Location] -> Int
+-- Base case: a suficient large number larger than max(# row, # col)
+minGusDist _ []         = 99 
+minGusDist (Location gc gr) ((Location tc tr):tgs) = 
+    min (max (colDiff gc tc) (rowDiff gr tr))
+        (minGusDist (Location gc gr) tgs)
+
+-- Take a list of targets and a guesses
+-- Returns the appropriate 3-tuple feedback described in the header section.
+-- Note: each guess will only be mapped to the closest target
+feedback :: [Location] -> [Location] -> (Int,Int,Int)
+feedback _ []           = (0, 0, 0)
+feedback tgs (gus:guses) 
+    | minDist == 0 = elemWiseAdd (1, 0, 0) rest
+    | minDist == 1 = elemWiseAdd (0, 1, 0) rest
+    | minDist == 2 = elemWiseAdd (0, 0, 1) rest
+    | otherwise    = rest
+    where minDist = minGusDist gus tgs
+          rest    = feedback tgs guses
+
+{-
 -- ex
 -- initialGuess :: ([Location],GameState)
 
 -- ex
--- nextGuess :: ([Location],GameState) → (Int,Int,Int) → ([Location],GameState)
+-- nextGuess :: ([Location],GameState) -> (Int,Int,Int) -> ([Location],GameState)
 -}
