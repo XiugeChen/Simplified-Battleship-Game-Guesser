@@ -22,71 +22,66 @@
       use it to update "GameState" and determine its guess.
 -}
 
-module Proj1 (Location, toLocation{-, feedback,
-              GameState, initialGuess, nextGuess-}) where
+module Proj1 (Location, toLocation, feedback,
+              GameState, initialGuess, nextGuess) where
 
--- **************** Main Data ****************
+-- **************** Data Definition ****************
 
--- Possible row number of the map
+-- Possible row of the game
+-- Note: Order does matter, GameState will use the same order of row 
+-- and the number of '|' between two rows is used to represent distance
 data Row = One | Two | Three | Four 
-    deriving (Eq)
+    deriving (Eq, Enum)
 
-instance Show Row where show = rowToStr
+instance Show Row where 
+    show One   = "1"
+    show Two   = "2"
+    show Three = "3"
+    show Four  = "4"
 
--- Possible column number of the map
+-- Possible column of the game
+-- Note: Order does matter, GameState will use the same order of col 
+-- and the number of '|' between two cols is used to represent distance
 data Col = A | B | C | D | E | F | G | H 
-    deriving (Eq, Show)
+    deriving (Eq, Show, Enum)
 
--- The location of a battleship, defined by a grid on specific row and column
+-- All different combination of location of the game
 data Location = Location Col Row 
     deriving (Eq)
 
 instance Show Location where show = locToStr
 
--- ex
--- data GameState = Null
+-- Feedback, a 3-tuple described above
+type Feedback = (Int, Int, Int)
+
+-- The state of each grid in the form (Location, Bool), where Bool 
+-- indicates whether possible to contain a target
+type GridState = (Location, Bool)
+
+-- The state of game (2D), gets updated everytime recieved some feedback
+type GameState = [[GridState]]
+
+-- **************** Constants ****************
+
+numTargets :: Int
+numTargets = 3
+
+-- All possible location in 2 dimension (row * col)
+-- The order of each row/col is specified by the order of data definition
+allLoc :: [[Location]]
+allLoc = [[Location col row | col <- [A ..]] | row <- [One ..]]
+
+-- Initial game state, turn each Location into a tuple (Location, True)
+initGameState :: GameState
+initGameState = [[(x, True) | x <- row] | row <- allLoc]
 
 -- **************** Functions ****************
 
--- Takes a row variable and convert it to a showable String
--- Implementation of Show type class
-rowToStr :: Row -> String
-rowToStr r
-    | r == One   = "1"
-    | r == Two   = "2"
-    | r == Three = "3"
-    | r == Four  = "4"
-    | otherwise  = error "Undefined instance of row"
-
--- Convert Row value to int for calculating distance
-rowToInt :: Row -> Int
-rowToInt r
-    | r == One   = 1
-    | r == Two   = 2
-    | r == Three = 3
-    | r == Four  = 4
-    | otherwise  = error "Undefined instance of row"
-
--- Convert Col value to int for calculating distance
-colToInt :: Col -> Int
-colToInt c
-    | c == A = 1
-    | c == B = 2
-    | c == C = 3
-    | c == D = 4
-    | c == E = 5
-    | c == F = 6
-    | c == G = 7
-    | c == H = 8
-    | otherwise = error "Undefined instance of column"
-
--- Takes a location and convert it to a showable String
--- Implementation of Show type class
+-- Convert Location to a showable String
 locToStr :: Location -> String
 locToStr (Location col row) = show col ++ show row
 
 -- Convert a string to Row
--- Input string must be of valid row format (length 1 from "1" to "4")
 toRow :: String -> Row
 toRow r
     | r == "1"  = One
@@ -96,7 +91,6 @@ toRow r
     | otherwise = error "Undefined char representation of row"
 
 -- Convert a string to Col
--- Input string must be of valid column format (length 1 from "A" to "H")
 toCol :: String -> Col
 toCol c
     | c == "A"  = A
@@ -109,51 +103,89 @@ toCol c
     | c == "H"  = H
     | otherwise = error "Undefined char representation of column"
 
--- Takes a String format location and convert it type Location
--- Input must be a valid location (i.e. length two from A1 to H4)
+-- Convert a String to Location, Nothing returned if input invalid
 toLocation :: String -> Maybe Location
 toLocation s =
     if length s == 2
         then Just (Location (toCol(take 1 s)) (toRow(drop 1 s)))
     else Nothing
 
--- Element wise add two triple of numbers
+-- Element wise add two triples of numbers
 elemWiseAdd :: Num a => (a, a, a) -> (a, a, a) -> (a, a, a)
 elemWiseAdd (a1, b1, c1) (a2, b2, c2) = (a1 + a2, b1 + b2, c1 + c2)
 
--- Calculate the difference of two columns
-colDiff :: Col -> Col -> Int
-colDiff c1 c2 = abs (colToInt c1 - colToInt c2)
+-- Calculate the distance of two Enum data
+enumDist :: Enum a => a -> a -> Int
+enumDist x y = abs (fromEnum x - fromEnum y)
 
--- Calculate the difference of two rows
-rowDiff :: Row -> Row -> Int
-rowDiff r1 r2 = abs (rowToInt r1 - rowToInt r2)
+-- Calculate the distance between two location
+locationDist :: Location -> Location -> Int
+locationDist (Location c1 r1) (Location c2 r2)
+    = max (enumDist c1 c2) (enumDist r1 r2)
 
 -- Get the minimum distance between one guess and all targets.
+-- Assumed each target is different
 minGusDist :: Location -> [Location] -> Int
 -- Base case: a suficient large number larger than max(# row, # col)
 minGusDist _ []         = 99 
-minGusDist (Location gc gr) ((Location tc tr):tgs) = 
-    min (max (colDiff gc tc) (rowDiff gr tr))
-        (minGusDist (Location gc gr) tgs)
+minGusDist gus (tg:tgs) = min (locationDist gus tg) (minGusDist gus tgs)
 
 -- Take a list of targets and a guesses
+-- Assumed each guess is different, and each target is different
 -- Returns the appropriate 3-tuple feedback described in the header section.
 -- Note: each guess will only be mapped to the closest target
-feedback :: [Location] -> [Location] -> (Int,Int,Int)
+feedback :: [Location] -> [Location] -> (Int, Int, Int)
 feedback _ []           = (0, 0, 0)
-feedback tgs (gus:guses) 
+feedback ts (g:gs) 
     | minDist == 0 = elemWiseAdd (1, 0, 0) rest
     | minDist == 1 = elemWiseAdd (0, 1, 0) rest
     | minDist == 2 = elemWiseAdd (0, 0, 1) rest
     | otherwise    = rest
-    where minDist = minGusDist gus tgs
-          rest    = feedback tgs guses
+    where minDist = minGusDist g ts
+          rest    = feedback ts gs
 
-{-
--- ex
--- initialGuess :: ([Location],GameState)
+-- Hard-coded optimal initial guess to help minimaize the guess number.
+initialGuess :: ([Location], GameState)
+initialGuess = ([(Location A One), (Location A Two), (Location A Three)]
+               , initGameState)
 
--- ex
--- nextGuess :: ([Location],GameState) -> (Int,Int,Int) -> ([Location],GameState)
--}
+-- Check whether a target is possible to be in one location
+-- based on previous guess and feedback recieved
+containTg :: Location -> [Location] -> Feedback -> Bool
+containTg _ [] _                    = True
+containTg grid locs (a, b, c)
+    | minDist == 0 && a > 0       = True
+    | minDist == 1 && b > 0       = True
+    | minDist == 2 && c > 0       = True
+    | minDist > 2  && 3-a-b-c > 0 = True
+    | otherwise                   = False
+    where minDist = minGusDist grid locs
+
+-- Update grid state based on previous guess and feedback recieved
+updateGrid :: GridState -> [Location] -> Feedback -> GridState
+updateGrid grist [] _ = grist
+updateGrid (grid, state) locs fb = (grid, state && existTg)
+    where existTg = containTg grid locs fb
+
+-- Update game state based on previous guess and feedback recieved
+-- eliminate all grids that are not possible to contain targets
+updateState :: [Location] -> GameState -> Feedback -> GameState
+updateState [] gst _           = gst
+updateState locs gst fb = [[updateGrid x locs fb | x <- row] | row <- gst]
+
+-- Make guesses based on current game state
+-- First arg is just a list to hold results
+makeGuess :: [Location] -> GameState -> [Location]
+makeGuess gus []       = gus
+makeGuess gus ([]:gst) = makeGuess gus gst
+makeGuess gus ((x:row):gst)
+    | length gus == numTargets = gus
+    | snd x                    = makeGuess ((fst x):gus) gst
+    | otherwise                = makeGuess gus gst
+
+-- Make next guess based on previous guess, game state before that guess
+-- and the feedback recieved
+nextGuess :: ([Location], GameState) -> Feedback
+              -> ([Location], GameState)
+nextGuess (locs, gst) fb = ((makeGuess [] newState), newState)
+    where newState = updateState locs gst fb
