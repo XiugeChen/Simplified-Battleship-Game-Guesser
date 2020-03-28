@@ -1,0 +1,7 @@
+# Best results so far running on all possible targets
+
+Avg :5.010685483870968 guesses.
+Total : 4960 Test.
+Total : 24853 guesses.
+Max : 10 guesses.
+Min : 1 guesses.

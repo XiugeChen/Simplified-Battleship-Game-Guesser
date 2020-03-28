@@ -150,7 +150,7 @@ feedback ts (g:gs)
 
 -- Hard-coded optimal initial guess to help minimaize the guess number.
 initialGuess :: ([Location], GameState)
-initialGuess = ([(Location A One), (Location A Two), (Location A Three)]
+initialGuess = ([(Location A One), (Location A Four), (Location H One)]
                , initGameState)
 
 -- Update game state based on previous guess and feedback recieved
@@ -163,10 +163,25 @@ updateState gus (tg:gst) fb =
     else
         updateState gus gst fb
 
+-- 
+expectRemain :: [Location] -> GameState -> Double
+expectRemain gus tgs = sum (map (\x -> x * x / totalNum) result)
+    where result = map (fromIntegral.length) (group (sort (map (`feedback` gus) tgs)))
+          totalNum = fromIntegral (length tgs)
+
+-- 
+chooseGuess :: GameState -> GameState -> ([Location], Double)
+chooseGuess [] gst = ([], 9999)
+chooseGuess (gus:guses) gst
+    | currentScore < snd other = (gus, currentScore)
+    | otherwise = other
+    where currentScore = expectRemain gus gst
+          other = chooseGuess guses gst
+
 -- Make next guess based on previous guess, game state before that guess
 -- and the feedback recieved
 nextGuess :: ([Location], GameState) -> Feedback
               -> ([Location], GameState)
-nextGuess (locs, gst) fb = (head newState, newState)
+nextGuess (locs, gst) fb = (fst (chooseGuess newState newState), newState)
     where newState = updateState locs gst fb
         
