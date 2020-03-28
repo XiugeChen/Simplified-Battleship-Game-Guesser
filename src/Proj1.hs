@@ -25,13 +25,15 @@
 module Proj1 (Location, toLocation, feedback,
               GameState, initialGuess, nextGuess) where
 
+import Data.List
+
 -- **************** Data Definition ****************
 
 -- Possible row of the game
 -- Note: Order does matter, GameState will use the same order of row 
 -- and the number of '|' between two rows is used to represent distance
-data Row = One | Two | Three | Four 
-    deriving (Eq, Enum)
+data Row = One | Two | Three | Four
+    deriving (Eq, Ord, Enum)
 
 instance Show Row where 
     show One   = "1"
@@ -42,24 +44,22 @@ instance Show Row where
 -- Possible column of the game
 -- Note: Order does matter, GameState will use the same order of col 
 -- and the number of '|' between two cols is used to represent distance
-data Col = A | B | C | D | E | F | G | H 
-    deriving (Eq, Show, Enum)
+data Col = A | B | C | D | E | F | G | H
+    deriving (Eq, Ord, Show, Enum)
 
 -- All different combination of location of the game
 data Location = Location Col Row 
-    deriving (Eq)
+    deriving (Eq, Ord)
 
 instance Show Location where show = locToStr
 
 -- Feedback, a 3-tuple described above
 type Feedback = (Int, Int, Int)
 
--- The state of each grid in the form (Location, Bool), where Bool 
--- indicates whether possible to contain a target
-type GridState = (Location, Bool)
-
--- The state of game (2D), gets updated everytime recieved some feedback
-type GameState = [[GridState]]
+-- The state of game (2D), includes whether a grid could contain the target
+-- and a list of guessed items.
+-- gets updated everytime recieved some feedback
+type GameState = [[Location]]
 
 -- **************** Constants ****************
 
@@ -68,12 +68,16 @@ numTargets = 3
 
 -- All possible location in 2 dimension (row * col)
 -- The order of each row/col is specified by the order of data definition
-allLoc :: [[Location]]
-allLoc = [[Location col row | col <- [A ..]] | row <- [One ..]]
+allLoc :: [Location]
+allLoc = [Location col row | col <- [A ..], row <- [One ..]]
+
+-- 
+subseqFixLen :: [a] -> Int -> [[a]]
+subseqFixLen xs k = filter ((k==).length) $ subsequences xs
 
 -- Initial game state, turn each Location into a tuple (Location, True)
 initGameState :: GameState
-initGameState = [[(x, True) | x <- row] | row <- allLoc]
+initGameState = subseqFixLen allLoc numTargets
 
 -- **************** Functions ****************
 
@@ -149,43 +153,20 @@ initialGuess :: ([Location], GameState)
 initialGuess = ([(Location A One), (Location A Two), (Location A Three)]
                , initGameState)
 
--- Check whether a target is possible to be in one location
--- based on previous guess and feedback recieved
-containTg :: Location -> [Location] -> Feedback -> Bool
-containTg _ [] _                    = True
-containTg grid locs (a, b, c)
-    | minDist == 0 && a > 0       = True
-    | minDist == 1 && b > 0       = True
-    | minDist == 2 && c > 0       = True
-    | minDist > 2  && 3-a-b-c > 0 = True
-    | otherwise                   = False
-    where minDist = minGusDist grid locs
-
--- Update grid state based on previous guess and feedback recieved
-updateGrid :: GridState -> [Location] -> Feedback -> GridState
-updateGrid grist [] _ = grist
-updateGrid (grid, state) locs fb = (grid, state && existTg)
-    where existTg = containTg grid locs fb
-
 -- Update game state based on previous guess and feedback recieved
 -- eliminate all grids that are not possible to contain targets
 updateState :: [Location] -> GameState -> Feedback -> GameState
-updateState [] gst _           = gst
-updateState locs gst fb = [[updateGrid x locs fb | x <- row] | row <- gst]
-
--- Make guesses based on current game state
--- First arg is just a list to hold results
-makeGuess :: [Location] -> GameState -> [Location]
-makeGuess gus []       = gus
-makeGuess gus ([]:gst) = makeGuess gus gst
-makeGuess gus ((x:row):gst)
-    | length gus == numTargets = gus
-    | snd x                    = makeGuess ((fst x):gus) gst
-    | otherwise                = makeGuess gus gst
+updateState _ [] _           = []
+updateState gus (tg:gst) fb = 
+    if fb == feedback tg gus && sort gus /= sort tg
+        then tg : updateState gus gst fb
+    else
+        updateState gus gst fb
 
 -- Make next guess based on previous guess, game state before that guess
 -- and the feedback recieved
 nextGuess :: ([Location], GameState) -> Feedback
               -> ([Location], GameState)
-nextGuess (locs, gst) fb = ((makeGuess [] newState), newState)
+nextGuess (locs, gst) fb = (head newState, newState)
     where newState = updateState locs gst fb
+        

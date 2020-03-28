@@ -34,6 +34,14 @@ main = do
 
 loop :: [Location] -> [Location] -> Proj1.GameState -> Int -> IO ()
 loop target guess other guesses = do
+  putStrLn $ "Size game state " ++ show (length other)
+
+  if length other < 100
+    then do
+      putStrLn $ "Your game state " ++ show other
+    else do 
+      putStrLn $ "Your game state "
+
   putStrLn $ "Your guess #" ++ show guesses ++ ":  " ++ show guess
   let answer = feedback target guess
   putStrLn $ "    My answer:  " ++ show answer
