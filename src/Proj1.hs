@@ -66,19 +66,24 @@ type GameState = [[Location]]
 numTargets :: Int
 numTargets = 3
 
+-- 
+firstGuess :: [Location]
+firstGuess = [(Location A Four), (Location H Two), (Location H Four)]
+
 -- All possible locations
 allLoc :: [Location]
 allLoc = [Location col row | col <- [A ..], row <- [One ..]]
 
 -- Initial game state, turn each Location into a tuple (Location, True)
 initGameState :: GameState
-initGameState = subseqFixLen allLoc numTargets
+initGameState = subseqFixLen 3 allLoc 
 
 -- **************** Functions ****************
 
 -- all subseqences of specified fixed length
-subseqFixLen :: [a] -> Int -> [[a]]
-subseqFixLen xs k = filter ((k==).length) $ subsequences xs
+subseqFixLen :: Int -> [a] -> [[a]]
+subseqFixLen 0 _  = [ [] ]
+subseqFixLen k xs = [ y:zs | (y:ys) <- tails xs, zs <- subseqFixLen (k-1) ys]
 
 -- Convert a string to Row
 toRow :: String -> Row
@@ -109,24 +114,17 @@ toLocation s =
         then Just (Location (toCol(take 1 s)) (toRow(drop 1 s)))
     else Nothing
 
--- Element wise add two triples of numbers
-elemWiseAdd :: Num a => (a, a, a) -> (a, a, a) -> (a, a, a)
-elemWiseAdd (a1, b1, c1) (a2, b2, c2) = (a1 + a2, b1 + b2, c1 + c2)
-
--- Calculate the distance of two Enum data
-enumDist :: Enum a => a -> a -> Int
-enumDist x y = abs (fromEnum x - fromEnum y)
-
 -- Calculate the distance between two location
 locationDist :: Location -> Location -> Int
 locationDist (Location c1 r1) (Location c2 r2)
-    = max (enumDist c1 c2) (enumDist r1 r2)
+    = max colDist rowDist
+    where colDist = abs (fromEnum c1 - fromEnum c2)
+          rowDist = abs (fromEnum r1 - fromEnum r2)
 
 -- Get the minimum distance between one guess and all targets.
 -- Assumed each target is different
 minGusDist :: Location -> [Location] -> Int
--- Base case: a suficient large number larger than max(# row, # col)
-minGusDist _ []         = 99 
+minGusDist _ []         = 99 -- a suficient large number larger than max(# row, # col)
 minGusDist gus (tg:tgs) = min (locationDist gus tg) (minGusDist gus tgs)
 
 -- Take a list of targets and a guesses
@@ -136,27 +134,21 @@ minGusDist gus (tg:tgs) = min (locationDist gus tg) (minGusDist gus tgs)
 feedback :: [Location] -> [Location] -> (Int, Int, Int)
 feedback _ []           = (0, 0, 0)
 feedback ts (g:gs) 
-    | minDist == 0 = elemWiseAdd (1, 0, 0) rest
-    | minDist == 1 = elemWiseAdd (0, 1, 0) rest
-    | minDist == 2 = elemWiseAdd (0, 0, 1) rest
-    | otherwise    = rest
+    | minDist == 0 = (a+1, b, c)
+    | minDist == 1 = (a, b+1, c)
+    | minDist == 2 = (a, b, c+1)
+    | otherwise    = (a, b, c)
     where minDist = minGusDist g ts
-          rest    = feedback ts gs
+          (a,b,c) = feedback ts gs
 
 -- Hard-coded optimal initial guess to help minimaize the guess number.
 initialGuess :: ([Location], GameState)
-initialGuess = ([(Location A Four), (Location H Two), (Location H Four)]
-               , initGameState)
+initialGuess = (firstGuess, initGameState)
 
 -- Update game state based on previous guess and feedback recieved
 -- eliminate all grids that are not possible to contain targets
 updateState :: [Location] -> GameState -> Feedback -> GameState
-updateState _ [] _           = []
-updateState gus (tg:gst) fb = 
-    if fb == feedback tg gus && sort gus /= sort tg
-        then tg : updateState gus gst fb
-    else
-        updateState gus gst fb
+updateState gus gst fb = [tg | tg <- gst, feedback tg gus == fb && gus /= tg]
 
 -- calculate the expected number of remaining targets if we make this guess
 expectRemain :: [Location] -> GameState -> Double
@@ -179,4 +171,3 @@ nextGuess :: ([Location], GameState) -> Feedback
               -> ([Location], GameState)
 nextGuess (locs, gst) fb = (fst (chooseGuess newState newState), newState)
     where newState = updateState locs gst fb
-        
