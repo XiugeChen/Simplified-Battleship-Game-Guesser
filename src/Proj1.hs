@@ -51,29 +51,24 @@ data Col = A | B | C | D | E | F | G | H
 data Location = Location Col Row 
     deriving (Eq, Ord)
 
-instance Show Location where show = locToStr
+instance Show Location where 
+    show (Location col row) = show col ++ show row
 
 -- Feedback, a 3-tuple described above
 type Feedback = (Int, Int, Int)
 
--- The state of game (2D), includes whether a grid could contain the target
--- and a list of guessed items.
--- gets updated everytime recieved some feedback
+-- The state of game, including all possible targets, get updates after each feedback
 type GameState = [[Location]]
 
 -- **************** Constants ****************
 
+-- number of target in this game
 numTargets :: Int
 numTargets = 3
 
--- All possible location in 2 dimension (row * col)
--- The order of each row/col is specified by the order of data definition
+-- All possible locations
 allLoc :: [Location]
 allLoc = [Location col row | col <- [A ..], row <- [One ..]]
-
--- 
-subseqFixLen :: [a] -> Int -> [[a]]
-subseqFixLen xs k = filter ((k==).length) $ subsequences xs
 
 -- Initial game state, turn each Location into a tuple (Location, True)
 initGameState :: GameState
@@ -81,9 +76,9 @@ initGameState = subseqFixLen allLoc numTargets
 
 -- **************** Functions ****************
 
--- Convert Location to a showable String
-locToStr :: Location -> String
-locToStr (Location col row) = show col ++ show row
+-- all subseqences of specified fixed length
+subseqFixLen :: [a] -> Int -> [[a]]
+subseqFixLen xs k = filter ((k==).length) $ subsequences xs
 
 -- Convert a string to Row
 toRow :: String -> Row
@@ -92,7 +87,7 @@ toRow r
     | r == "2"  = Two
     | r == "3"  = Three
     | r == "4"  = Four
-    | otherwise = error "Undefined char representation of row"
+    | otherwise = error "Undefined string representation of row"
 
 -- Convert a string to Col
 toCol :: String -> Col
@@ -105,7 +100,7 @@ toCol c
     | c == "F"  = F
     | c == "G"  = G
     | c == "H"  = H
-    | otherwise = error "Undefined char representation of column"
+    | otherwise = error "Undefined string representation of column"
 
 -- Convert a String to Location, Nothing returned if input invalid
 toLocation :: String -> Maybe Location
@@ -150,7 +145,7 @@ feedback ts (g:gs)
 
 -- Hard-coded optimal initial guess to help minimaize the guess number.
 initialGuess :: ([Location], GameState)
-initialGuess = ([(Location A One), (Location A Four), (Location H One)]
+initialGuess = ([(Location A Four), (Location H Two), (Location H Four)]
                , initGameState)
 
 -- Update game state based on previous guess and feedback recieved
@@ -163,13 +158,13 @@ updateState gus (tg:gst) fb =
     else
         updateState gus gst fb
 
--- 
+-- calculate the expected number of remaining targets if we make this guess
 expectRemain :: [Location] -> GameState -> Double
 expectRemain gus tgs = sum (map (\x -> x * x / totalNum) result)
     where result = map (fromIntegral.length) (group (sort (map (`feedback` gus) tgs)))
           totalNum = fromIntegral (length tgs)
 
--- 
+-- choose the guess that has lowest expected number of remaining targets
 chooseGuess :: GameState -> GameState -> ([Location], Double)
 chooseGuess [] gst = ([], 9999)
 chooseGuess (gus:guses) gst
