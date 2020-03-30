@@ -22,7 +22,7 @@
 
 * The guessing process should be started by calling the "initialGuess" and many consecutive calls to "nextGuess" until all three battleships are identified. For each "nextGuess", the "feedback" function will give addition information described above, so that the next "nextGuess" could use it to update "GameState" and determine the next guess.
 
-* Result: 
+* Result: average 4.983064516129033 guesses, max 10 guesses and min 1 guesses.
 
 * For detailed description please check out [project specification](docs/specification.pdf)
 
